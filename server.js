@@ -4,6 +4,11 @@ const path = require('path');
 
 const pathToIndex = path.join(__dirname, 'static', 'index.html');
 const indexHtmlFile = fs.readFileSync(pathToIndex);
+const pathToScript = path.join(__dirname, 'static', 'script.js');
+const scriptJsFile = fs.readFileSync(pathToScript);
+const pathToStyle = path.join(__dirname, 'static', 'style.css');
+const styleCssFile = fs.readFileSync(pathToStyle);
+
 
 const server = http.createServer((req, res) => {
     if(req.url === '/') {
