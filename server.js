@@ -18,3 +18,13 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(3000);
+
+const { Server } = require("socket.io");
+const io = new Server(server);
+
+io.on('connection', (socket) =>  {
+    console.log('a user connected. id - ' + socket.id) ;
+    socket.on('new_message', (message) => {
+        console.log(message);
+    });
+});
