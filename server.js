@@ -1,82 +1,70 @@
-const fs = require("fs");
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const db = require('./database');
 
-// Шлях до файлу, у якому буде наша база даних
-const dbFile = "./chat.db";
-const exists = fs.existsSync(dbFile);
-const sqlite3 = require("sqlite3").verbose();
-const dbWrapper = require("sqlite");
-let db;
+const indexHtmlFile = fs.readFileSync(path.join(__dirname, 'static', 'index.html'));
+const scriptFile = fs.readFileSync(path.join(__dirname, 'static', 'script.js'));
+const authFile = fs.readFileSync(path.join(__dirname, 'static', 'auth.js'));
+const styleFile = fs.readFileSync(path.join(__dirname, 'static', 'style.css'));
+const registerFile = fs.readFileSync(path.join(__dirname, 'static', 'register.html'));
 
-dbWrapper
-  .open({
-    filename: dbFile,
-    driver: sqlite3.Database
-  })
-  .then(async dBase => {
-    db = dBase;
-
-    // Використвуємо try-catch у разі якщо виникнуть помилки
-    try {
-      // Перевіряємо чи існує уже файл бази даних
-      if (!exists) {
-        // Якщо не існує то створюємо таблиці
-        await db.run(
-            `CREATE TABLE user(
-                user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                login TEXT,
-                password TEXT
-            );`
-        );
-
-        await db.run(
-          `INSERT INTO user (login, password) VALUES 
-          ('admin', 'admin'), 
-          ('JavaScript', 'banana'), 
-          ('user1', 'password1');`
-        );
-
-        await db.run(
-            `CREATE TABLE message(
-                msg_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                content TEXT,
-                autor INTEGER,
-                FOREIGN KEY(autor) REFERENCES user(user_id)
-            );`
-        );s
-      } else {
-        console.log(await db.all("SELECT * from user"));
-      }
-    } catch (dbError) {
-      console.error(dbError);
+const server = http.createServer((req, res) => {
+  if(req.method === 'GET') {
+    switch(req.url) {
+      case '/': return res.end(indexHtmlFile);
+      case '/script.js': return res.end(scriptFile);
+      case '/auth.js': return res.end(authFile);
+      case '/style.css': return res.end(styleFile);
+      case '/register': return res.end(registerFile);
     }
-  });
-
-
-module.exports = {
-  getMessages: async () => {
-    try {
-      return await db.all(
-        `SELECT msg_id, content, login, user_id from message
-         JOIN user ON message.autor = user.user_id`
-        );
-    } catch (dbError) {
-      console.error(dbError);
-    }
-  },
-  addMessage: async (msg, userId) => {
-    await db.run(
-      `INSERT INTO message (content, autor) VALUES (?, ?)`,
-      [msg, userId]
-    );
-  },
-  isUserExist: async (login) => {
-    const candidate = await db.all(`SELECT * FROM user WHERE login = ?`, [login]);
-    return !!candidate.length;
-  },
-  addUser: async (user) => {
-    await db.run(
-      `INSERT INTO user (login, password) VALUES (?, ?)`,
-      [user.login, user.password]
-    );
   }
-};
+  if(req.method === 'POST') {
+    switch(req.url) {
+      case '/api/register': return registerUser(req, res);
+    }
+  }
+  return res.end('Error 404');
+});
+
+function registerUser(req, res) {
+    let data = '';
+    req.on('data', function(chunk) {
+        data += chunk;
+    });
+    req.on('end', async function() {
+      try {
+        const user = JSON.parse(data);
+        if(!user.login || !user.password) {
+          return res.end('Empty login or password');
+        }
+        if(await db.isUserExist(user.login)) {
+          return res.end('User already exist');
+        }
+        await db.addUser(user);
+        return res.end('Registeration is successfull');
+      }
+      catch(e) {
+        return res.end('Error: ' + e);
+      }
+    });
+}
+
+server.listen(3000);
+
+const { Server } = require("socket.io");
+const io = new Server(server);
+
+io.on('connection', async (socket) => {
+  console.log('a user connected. id - ' + socket.id);
+
+  let userNickname = 'admin';
+  let messages = await db.getMessages();
+
+  socket.emit('all_messages', messages);
+
+  socket.on('new_message', (message) => {
+    db.addMessage(message, 1);
+    io.emit('message', userNickname + ' : ' + message);
+  });
+});
