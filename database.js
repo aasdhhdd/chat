@@ -42,7 +42,7 @@ dbWrapper
                 autor INTEGER,
                 FOREIGN KEY(autor) REFERENCES user(user_id)
             );`
-        );s
+        );
       } else {
         console.log(await db.all("SELECT * from user"));
       }
