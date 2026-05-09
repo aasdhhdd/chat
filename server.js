@@ -24,6 +24,7 @@ const server = http.createServer((req, res) => {
   if(req.method === 'POST') {
     switch(req.url) {
       case '/api/register': return registerUser(req, res);
+      case '/api/login': return loginUser(req, res);
     }
   }
   return res.end('Error 404');
@@ -49,6 +50,16 @@ function registerUser(req, res) {
       catch(e) {
         return res.end('Error: ' + e);
       }
+    });
+}
+
+function login(req, res) {
+    let data = '';
+    req.on('data', function(chunk) {
+        data += chunk;
+    });
+    req.on('end', function() {
+        console.log(data)
     });
 }
 
