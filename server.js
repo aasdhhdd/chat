@@ -35,6 +35,34 @@ const server = http.createServer((req, res) => {
   return res.end('Error 404');
 });
 
+function guarded(req, res) {
+  const credentionals = getCredentionals(req);
+  
+  if(!credentionals) {
+    res.writeHead(302, {'Location': '/login'});
+    return res.end(); 
+  }
+  
+  if(req.method === 'GET') {
+    switch(req.url) {
+      case '/': return res.end(indexHtmlFile);
+      case '/script.js': return res.end(scriptFile);
+    }
+  }
+
+  res.writeHead(404);
+  return res.end('Error 404');
+}
+
+function getCredentionals(req) {
+  const cookies = cookie.parse(req.headers?.cookie || '');
+  const token = cookies?.token;
+  if(!token || !validAuthTokens.includes(token)) return null;
+  const [user_id, login] = token.split('.');
+  if(!user_id || !login) return null;
+  return {user_id, login};
+}
+
 function registerUser(req, res) {
     let data = '';
     req.on('data', function(chunk) {
