@@ -2,6 +2,9 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const db = require('./database');
+const cookie = require('cookie');
+
+const validAuthTokens = [];
 
 const indexHtmlFile = fs.readFileSync(path.join(__dirname, 'static', 'index.html'));
 const scriptFile = fs.readFileSync(path.join(__dirname, 'static', 'script.js'));
@@ -61,6 +64,26 @@ function login(req, res) {
     req.on('end', function() {
         console.log(data)
     });
+}
+
+function login(req, res) {
+  let data = '';
+  req.on('data', function(chunk) {
+      data += chunk;
+  });
+  req.on('end', async function() {
+    try {
+      const user = JSON.parse(data);
+      const token = await db.getAuthToken(user);
+      validAuthTokens.push(token);
+      res.writeHead(200);
+      res.end(token);
+    }
+    catch(e) {
+      res.writeHead(500);
+      return res.end('Error: ' + e);
+    }
+  });
 }
 
 server.listen(3000);
