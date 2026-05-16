@@ -114,16 +114,18 @@ io.on('connection', async (socket) => {
   console.log('a user connected. id - ' + socket.id);
 
 
-  let userNickname = 'admin';
+  let userNickname = socket.credentionals?.login;
+  let userId = socket.credentionals?.user_id;
   let messages = await db.getMessages();
 
   socket.emit('all_messages', messages);
 
   socket.on('new_message', (message) => {
-    db.addMessage(message, 1);
+    db.addMessage(message, userId);
     io.emit('message', userNickname + ': ' + message);
   });
 });
+
 io.use((socket, next) => {
   const cookie = socket.handshake.auth.cookie;
   const credentionals = getCredentionals(cookie);
